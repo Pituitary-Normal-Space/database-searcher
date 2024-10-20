@@ -167,7 +167,9 @@ class DBSearcher:
 
         # Check for errors in the response
         if response.status_code == 401:
-            raise Exception("Unauthorized: Check your API key and permissions.")
+            raise Exception(
+                "Unauthorized: Check your API key and permissions. You may need to get a token for Embase if working off grounds. You can email: integrationsupport@elsevier.com for this."
+            )
 
         response.raise_for_status()  # Raise an error for bad responses
         return response.json().get("search-results", {}).get("entry", [])
@@ -206,22 +208,24 @@ class DBSearcher:
         else:
             return "No abstract available"
 
-    def __fetch_pubmed_details(self, pubmed_ids: List[int]) -> List[Tuple[str, str]]:
+    def __fetch_pubmed_details(
+        self, pubmed_ids: List[int]
+    ) -> List[Tuple[str, str, str]]:
         """
-        Fetch details (title and abstract) from PubMed using the provided IDs.
+        Fetch details (title, abstract, and first author's last name) from PubMed using the provided IDs.
 
         Args:
             pubmed_ids (list): List of PubMed IDs.
             api_key (str): Your PubMed API key.
 
         Returns:
-            list: List of tuples containing (title, abstract) for each article.
+            list: List of tuples containing (title, abstract, first_author_last_name) for each article.
         """
         if not pubmed_ids:
             return []
 
         pubmed_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-        ids = ",".join(pubmed_ids)  # Join IDs into a single string
+        ids = ",".join(map(str, pubmed_ids))  # Join IDs into a single string
         params = {
             "db": "pubmed",
             "id": ids,
@@ -236,28 +240,46 @@ class DBSearcher:
         details = []
 
         for article in root.findall(".//PubmedArticle"):
-            # See why the title is sometimes partially missing
-            # print(ET.tostring(article, encoding="unicode", method="xml"))
-
+            # Get full title and abstract
             title = self.__get_full_title(article)
             abstract = self.__get_full_abstract(article)
-            details.append((title, abstract))
+
+            # Get first author's last name
+            first_author_lastname = "No author available"
+            authors = article.findall(".//Author")
+            if authors and authors[0].find(".//LastName") is not None:
+                first_author_lastname = authors[0].find(".//LastName").text
+
+            # Append title, abstract, and first author's last name
+            details.append((title, abstract, first_author_lastname))
 
         return details
 
-    def __fetch_embase_details(self, doc: dict):
+    def __fetch_embase_details(self, doc: dict) -> Tuple[str, str, str]:
         """
-        Fetch details (title and abstract) from a specific Embase document.
+        Fetch details (title, abstract, and first author's last name) from a specific Embase document.
 
         Args:
             doc (dict): The Embase document.
 
         Returns:
-            tuple: (title, abstract) of the document.
+            tuple: (title, abstract, first_author_last_name) of the document.
         """
         title = doc.get("dc:title", "No title available")
         abstract = doc.get("dc:description", "No abstract available")
-        return title, abstract
+
+        # Get first author's last name
+        first_author_lastname = "No author available"
+        if (
+            "dc:creator" in doc
+            and isinstance(doc["dc:creator"], list)
+            and len(doc["dc:creator"]) > 0
+        ):
+            first_author_lastname = doc["dc:creator"][0].split()[
+                -1
+            ]  # Assuming last name is the last word
+
+        return title, abstract, first_author_lastname
 
     def search(self, query: str) -> pd.DataFrame:
         """
@@ -278,6 +300,7 @@ class DBSearcher:
                 "The search query is not properly formatted for PubMed.",
             )
             return pd.DataFrame()
+
         # Search PubMed
         try:
             pubmed_ids = self.__search_pubmed(query)
@@ -304,18 +327,33 @@ class DBSearcher:
             embase_details = []
 
         # Create a DataFrame to hold the results
-        results_data = {"Source": [], "Title": [], "Abstract": [], "ID": [], "Link": []}
+        results_data = {
+            "Source": [],
+            "Author": [],
+            "Title": [],
+            "Abstract": [],
+            "ID": [],
+            "Link": [],
+        }
 
         # Add PubMed results to the DataFrame
         for i, pmid in enumerate(pubmed_ids):
             results_data["Source"].append("PubMed")
-            title, abstract = (
+
+            # Extract title, abstract, and author from PubMed details
+            title, abstract, author_lastname = (
                 pubmed_details[i]
                 if i < len(pubmed_details)
-                else ("No title available", "No abstract available")
+                else (
+                    "No title available",
+                    "No abstract available",
+                    "No author available",
+                )
             )
+
             results_data["Title"].append(title)
             results_data["Abstract"].append(abstract)
+            results_data["Author"].append(author_lastname)
             results_data["ID"].append(pmid)
             results_data["Link"].append(
                 f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
@@ -323,10 +361,13 @@ class DBSearcher:
 
         # Add Embase results to the DataFrame
         for i, doc in enumerate(embase_results):
-            title, abstract = embase_details[i]
+            # Extract title, abstract, and author from Embase details
+            title, abstract, author_lastname = embase_details[i]
+
             results_data["Source"].append("Embase")
             results_data["Title"].append(title)
             results_data["Abstract"].append(abstract)
+            results_data["Author"].append(author_lastname)
             results_data["ID"].append(doc.get("dc:identifier", "No ID available"))
             results_data["Link"].append(
                 doc.get("link", [{"href": "No link available"}])[0]["href"]
@@ -334,5 +375,8 @@ class DBSearcher:
 
         # Create and return the DataFrame
         results_df = pd.DataFrame(results_data)
-        print(results_df)
+
+        # Add the query to the DataFrame
+        results_df["Query"] = query
+
         return results_df

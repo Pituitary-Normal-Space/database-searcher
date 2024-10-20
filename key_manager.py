@@ -4,17 +4,14 @@ If not, we prompt the user to enter the keys and save them in the environment va
 """
 
 import os
-import tkinter as tk
 from tkinter import messagebox, simpledialog
 from typing import Optional, Dict, Literal
 
 # Load environment variables from the .env file
 from dotenv import load_dotenv
+from const import EMBASE_KEY, PUBMED_KEY, VALID_DATABASES
 
 load_dotenv()
-
-
-from const import EMBASE_KEY, PUBMED_KEY, VALID_DATABASES
 
 
 def get_keys() -> Dict[Optional[str], Optional[str]]:
