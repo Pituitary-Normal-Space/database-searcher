@@ -5,11 +5,12 @@ File that contains a class that will be used to search the relevant database for
 import re
 from tkinter import messagebox
 from typing import Dict, List, Tuple
+from xml.etree import ElementTree as ET
 
 import requests
 import pandas as pd
 
-
+from config import MAX_RESULTS
 from const import EMBASE_KEY, PUBMED_KEY
 
 
@@ -132,6 +133,7 @@ class DBSearcher:
             "term": query,
             "retmode": "json",
             "api_key": self.api_key.get(PUBMED_KEY),
+            "retmax": MAX_RESULTS,  # Number of results to return (optional)
         }
 
         response = requests.get(pubmed_base_url, params=params)
@@ -152,7 +154,7 @@ class DBSearcher:
         params = {
             "query": query,
             "apiKey": self.api_key.get(EMBASE_KEY),
-            "count": 200,  # Number of results to return (optional)
+            "count": MAX_RESULTS,  # Number of results to return (optional)
         }
 
         headers = {
@@ -169,6 +171,40 @@ class DBSearcher:
 
         response.raise_for_status()  # Raise an error for bad responses
         return response.json().get("search-results", {}).get("entry", [])
+
+    def __get_full_title(self, article: ET.Element) -> str:
+        """
+        Extract the full title text from an article element.
+
+        Args:
+            article (Element): The article element from the XML tree.
+
+        Returns:
+            str: The full title text of the article.
+        """
+        article_title_element = article.find(".//ArticleTitle")
+        if article_title_element is not None:
+            # Use itertext() to get all text including from sub-elements
+            return " ".join(article_title_element.itertext()).strip()
+        else:
+            return "No title available"
+
+    def __get_full_abstract(self, article: ET.Element) -> str:
+        """
+        Extract the full abstract text from an article element.
+
+        Args:
+            article (Element): The article element from the XML tree.
+
+        Returns:
+            str: The full abstract text of the article.
+        """
+        abstract_element = article.find(".//Abstract")
+        if abstract_element is not None:
+            # Use itertext() to get all text from the Abstract and its child elements
+            return " ".join(abstract_element.itertext()).strip()
+        else:
+            return "No abstract available"
 
     def __fetch_pubmed_details(self, pubmed_ids: List[int]) -> List[Tuple[str, str]]:
         """
@@ -196,23 +232,15 @@ class DBSearcher:
         response = requests.get(pubmed_base_url, params=params)
         response.raise_for_status()
 
-        # Parse XML response to extract titles and abstracts
-        from xml.etree import ElementTree as ET
-
         root = ET.fromstring(response.content)
         details = []
 
         for article in root.findall(".//PubmedArticle"):
-            title = (
-                article.find(".//ArticleTitle").text
-                if article.find(".//ArticleTitle") is not None
-                else "No title available"
-            )
-            abstract = (
-                article.find(".//Abstract/AbstractText").text
-                if article.find(".//Abstract/AbstractText") is not None
-                else "No abstract available"
-            )
+            # See why the title is sometimes partially missing
+            # print(ET.tostring(article, encoding="unicode", method="xml"))
+
+            title = self.__get_full_title(article)
+            abstract = self.__get_full_abstract(article)
             details.append((title, abstract))
 
         return details
