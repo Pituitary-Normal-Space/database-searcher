@@ -42,7 +42,7 @@ Currently this is a simple program that just provides a UI wrapper around a Pyth
   ```
 - Run the program with this command
   ```bash
-  <to be filled in...>
+  python main.py
   ```
 - If you chose to change the source code--as you develop you can add packages with the following command
   ```bash
