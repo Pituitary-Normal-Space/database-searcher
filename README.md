@@ -8,7 +8,17 @@ This was built so that you can enter a single search query in PubMed syntax and 
 
 ### What Does It Do Currently?
 
-Currently this is a simple program that just provides a UI wrapper around a Python package that allows for searching across these two medical databases. Additionally, it checks that your search string is properly formatted. Then once the search is completed, the results of the search are added to a dataframe, duplicate entries are removed, and a CSV of results is produced.
+Currently this is a simple program that provides a UI to interface with the APIs for searching across these two medical databases: Embase and PubMed. It checks that your search string is properly formatted in PubMed syntax then converts it to Embase format to search there. Once the search is completed, the results of the search are added to a dataframe, duplicate entries are removed, and a CSV of results is produced.
+
+The results saved to a csv file contain columns for:
+
+- Source
+- Author
+- Title
+- Abstract
+- ID
+- Link
+- Query
 
 ### How To Set Up Locally
 
