@@ -1,0 +1,3 @@
+PUBMED_KEY = "PUBMED_KEY"
+EMBASE_KEY = "EMBASE_KEY"
+VALID_DATABASES = ["embase", "pubmed"]
