@@ -185,7 +185,7 @@ class DBSearcher:
         article_title_element = article.find(".//ArticleTitle")
         if article_title_element is not None:
             # Use itertext() to get all text including from sub-elements
-            return " ".join(article_title_element.itertext()).strip()
+            return "".join(article_title_element.itertext()).strip()
         else:
             return "No title available"
 
@@ -202,7 +202,7 @@ class DBSearcher:
         abstract_element = article.find(".//Abstract")
         if abstract_element is not None:
             # Use itertext() to get all text from the Abstract and its child elements
-            return " ".join(abstract_element.itertext()).strip()
+            return "".join(abstract_element.itertext()).strip()
         else:
             return "No abstract available"
 
