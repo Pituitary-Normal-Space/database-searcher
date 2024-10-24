@@ -9,7 +9,7 @@ from typing import Optional, Dict, Literal
 
 # Load environment variables from the .env file
 from dotenv import load_dotenv
-from const import EMBASE_KEY, PUBMED_KEY, VALID_DATABASES
+from const import EMBASE_KEY, PUBMED_KEY, EMBASE_INST_TOKEN_KEY, VALID_DATABASES
 
 load_dotenv()
 
@@ -24,6 +24,7 @@ def get_keys() -> Dict[Optional[str], Optional[str]]:
     """
     api_keys = {
         EMBASE_KEY: os.getenv(EMBASE_KEY),
+        EMBASE_INST_TOKEN_KEY: os.getenv(EMBASE_INST_TOKEN_KEY),
         PUBMED_KEY: os.getenv(PUBMED_KEY),
     }
 
@@ -39,6 +40,24 @@ def get_keys() -> Dict[Optional[str], Optional[str]]:
             # Save the key in the environment variables
             save_keys(embase_key, "embase")
             api_keys[EMBASE_KEY] = embase_key
+        except ValueError as e:
+            messagebox.showerror(
+                "DBSearcher: Error",
+                f"You need to enter a valid API key to continue. Please restart the program. {e}",
+            )
+            return api_keys
+        
+    if not api_keys[EMBASE_INST_TOKEN_KEY]:
+        # Prompt the user to enter the key using a dialog box
+        embase_inst_token = simpledialog.askstring(
+            "DBSearcher: Enter Embase Institution Token",
+            "You need to enter your Embase Institution Token to continue:",
+        )
+        embase_inst_token = embase_inst_token.strip()
+        try:
+            # Save the key in the environment variables
+            save_keys(embase_inst_token, "embase_inst_token")
+            api_keys[EMBASE_INST_TOKEN_KEY] = embase_inst_token
         except ValueError as e:
             messagebox.showerror(
                 "DBSearcher: Error",
@@ -67,7 +86,7 @@ def get_keys() -> Dict[Optional[str], Optional[str]]:
     return api_keys
 
 
-def save_keys(key: str, database: Literal["embase", "pubmed"]) -> None:
+def save_keys(key: str, database: Literal["embase", "pubmed", "embase_inst_token"]) -> None:
     """
     Save the API key in the environment variables for a database.
 
@@ -80,14 +99,16 @@ def save_keys(key: str, database: Literal["embase", "pubmed"]) -> None:
         raise ValueError("The key cannot be empty.")
 
     # Check that the database is valid
-    if database not in VALID_DATABASES:
-        raise ValueError(f"The database must be one of {VALID_DATABASES}.")
+    if database not in VALID_DATABASES and database != "embase_inst_token":
+        raise ValueError(f"The database must be one of {VALID_DATABASES} or inst_token.")
 
     # Save the key in the environment variables
     if database == "embase":
         os.environ[EMBASE_KEY] = key
     elif database == "pubmed":
         os.environ[PUBMED_KEY] = key
+    elif database == "embase_inst_token":
+        os.environ[EMBASE_INST_TOKEN_KEY] = key
 
     # Save the environment variables to the .env file
     with open(".env", "a") as f:

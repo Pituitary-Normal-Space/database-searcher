@@ -11,7 +11,7 @@ import requests
 import pandas as pd
 
 from config import MAX_RESULTS
-from const import EMBASE_KEY, PUBMED_KEY
+from const import EMBASE_KEY, PUBMED_KEY, EMBASE_INST_TOKEN_KEY
 
 
 class DBSearcher:
@@ -150,17 +150,18 @@ class DBSearcher:
         Returns:
             dict: The search results from Embase.
         """
-        embase_base_url = "https://api.elsevier.com/content/search/sciencedirect"
+        embase_base_url = "https://api.elsevier.com/content/embase/article/"
         params = {
             "query": query,
             "apiKey": self.api_key.get(EMBASE_KEY),
+            "Insttoken": self.api_key.get(EMBASE_INST_TOKEN_KEY),
             "count": MAX_RESULTS,  # Number of results to return (optional)
         }
 
         headers = {
             "Accept": "application/json",
             "X-ELS-APIKey": self.api_key.get(EMBASE_KEY),
-            # "X-ELS-Insttoken": token,  # We need to get a token for this to work
+            "X-ELS-Insttoken": self.api_key.get(EMBASE_INST_TOKEN_KEY),
         }
 
         response = requests.get(embase_base_url, params=params, headers=headers)
@@ -169,6 +170,10 @@ class DBSearcher:
         if response.status_code == 401:
             raise Exception(
                 "Unauthorized: Check your API key and permissions. You may need to get a token for Embase if working off grounds. You can email: integrationsupport@elsevier.com for this."
+            )
+        elif response.status_code == 403:
+            raise Exception(
+                "Forbidden: You do not have permission to access this resource. Check your API key and permissions. You can email: integrationsupport@elsevier.com for support."
             )
 
         response.raise_for_status()  # Raise an error for bad responses

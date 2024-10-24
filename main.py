@@ -15,6 +15,7 @@ load_dotenv()
 
 # Check if the API keys are saved in the environment variables
 api_keys = km.get_keys()
+print(api_keys)
 
 # Check if the user has entered the API keys
 if not all(api_keys.values()):
