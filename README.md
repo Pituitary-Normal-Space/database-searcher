@@ -43,7 +43,7 @@ The results saved to a csv file contain columns for:
 - Set up virtual environment using poetry
 
   ```bash
-  poetry install
+  poetry install --no-root
   ```
 
 - Now you should have a created venv that you can switch into with the following command
