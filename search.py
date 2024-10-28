@@ -287,7 +287,12 @@ class DBSearcher:
             abstract = "No abstract available"
         except IndexError:
             abstract = "No abstract available"
-        first_author_lastname = head.get("authorList", {}).get("authors", {})[0].get("surname", "No author available")
+        try:
+            first_author_lastname = head.get("authorList", {}).get("authors", {})[0].get("surname", "No author available")
+        except IndexError:
+            first_author_lastname = "No author available"
+        except KeyError:
+            first_author_lastname = "No author available"
         link = data.get("itemInfo", {}).get("itemIdList", {}).get("doi", "No link available")
         id = data.get("itemInfo", {}).get("itemIdList", {}).get("medl", "No ID available")
 
@@ -330,16 +335,16 @@ class DBSearcher:
         embase_query = self.__convert_pubmed_to_embase(query)
 
         # Search Embase
-        embase_results = self.__search_embase(embase_query)
-        embase_details = [
-            self.__fetch_embase_details(doc) for doc in embase_results
-        ]
-        print(embase_details)
-        # except Exception as e:
-        #     # Show an error messagebox
-        #     messagebox.showerror("DBSearcher: Error", f"Error searching Embase: {e}")
-        #     embase_results = []
-        #     embase_details = []
+        try:
+            embase_results = self.__search_embase(embase_query)
+            embase_details = [
+                self.__fetch_embase_details(doc) for doc in embase_results
+            ]
+        except Exception as e:
+            # Show an error messagebox
+            messagebox.showerror("DBSearcher: Error", f"Error searching Embase: {e}")
+            embase_results = []
+            embase_details = []
 
         # Create a DataFrame to hold the results
         results_data = {
